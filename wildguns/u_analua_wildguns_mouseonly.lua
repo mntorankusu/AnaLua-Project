@@ -78,8 +78,6 @@ function mousecontrol()
 		screenchecka = screenchecka + 0.1
 	end
 	
-	if (currentscreen == 0) then memory.writebyte(0x7E0000, math.floor(8)) end
-	
 	print(string.format("X: %i", keyinput.xmouse))
 	print(string.format("Y: %i", keyinput.ymouse))
 	
