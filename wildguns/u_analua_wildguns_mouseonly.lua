@@ -2,14 +2,15 @@
 --by mntorankusu for AnaLua project
 --only supports single player, the second player must use a standard controller for now
 --[[Here are the settings]]--
-EnforceHardMode = true --If true, always play on hard mode.
+EnableMouseAiming = true --if true, enable mouse controls. If you only want to use this script for the other features, set to false.
+EnforceHardMode = true --If true, always play on hard mode. I don't actually know if this works.
 MouseLag = 0 --make the mouse pointer lag by this number of frames. to increase the difficulty I guess?
 SkipNatsumeLogo = false --if true, skip the natsume logo and go straight to the title screen.
 EasyLasso = true --if true, hold the middle mouse button to ready the lasso
-EasySkipToStageSelect = false --if true, press select instead of start on the character select screen to skip to the stage select
+EasySkipToStageSelect = true --if true, hold L and press Start on the character select screen to skip the intro stage
 --normally, you hold select and press AAAABBBBABABABAB to accomplish this
-EasySkipToFinalBoss = false --if true, press select on the level select screen to skip to the final boss
---I also discovered that the same cheat code allowed you to skip to the final boss. this seems to be new information?
+EasySkipToFinalBoss = true --if true, press L on the level select screen to skip to the final boss
+--I also discovered that the same cheat code allows you to skip to the final boss from the level select. this seems to be new information?
 
 
 xcursoroffset = -2
@@ -17,6 +18,14 @@ ycursoroffset = -2
 xscreenoffset = 0
 
 currentscreen = 0
+
+
+--addresses
+address_p1_cursorx = 0x7E1609 --this one is 16-bit. everything else is 8-bit, or at least never goes above 255/127 or below 0/-127
+address_p1_cursory = 0x7E1709
+address_p1_character = 0x7E0000
+address_currentscreen = 0x7E0000
+address_xscreenoffset = 0x7E0020
 
 --most of these screens aren't used in the script, but I've documented them for reference
 screen_natsume = 0
@@ -43,8 +52,8 @@ for i = 1,MouseLag do
 	ymouselag[i] = 0
 end
 
-p1_tertiary = 0
-p1_primary = 0
+p1_x = 0
+p1_y = 0
 
 p1_character = 0
 
@@ -63,14 +72,12 @@ print("Use the arrow keys to adjust the X and Y offset until the crosshair posit
 
 function mousecontrol()
 	
-	gui.text(0,8, math.floor(screenchecka))
-	gui.text(0,16, currentscreen)
-	
 	output = {}
 	keyinput = {}
 	
-	xscreenoffset = memory.readbyte(0x7E0020)
-	currentscreen = memory.readbyte(0x7E0000)
+	xscreenoffset = memory.readbyte(address_xscreenoffset)
+	currentscreen = memory.readbyte(address_currentscreen)
+	p1_character = memory.readbyte(address_p1_character)
 	
 	keyinput = input.get()
 	
@@ -81,9 +88,13 @@ function mousecontrol()
 	print(string.format("X: %i", keyinput.xmouse))
 	print(string.format("Y: %i", keyinput.ymouse))
 	
+	gui.text(2,1, string.format("X: %i - Y: %i", keyinput.xmouse, keyinput.ymouse))
+	gui.text(2,8, string.format("Screen: %i", currentscreen))
+	gui.text(2,216, "Wild Guns with Mouse Aiming - AnaLua project Lua script")
+	
 	if (MouseLag == 0) then
-		p1_tertiary = keyinput.xmouse+xscreenoffset-xcursoroffset
-		p1_primary = keyinput.ymouse-ycursoroffset
+		p1_x = keyinput.xmouse+xscreenoffset-xcursoroffset
+		p1_y = keyinput.ymouse-ycursoroffset
 	else
 		for i = 1,MouseLag-1 do
 			xmouselag[i] = xmouselag[i+1]
@@ -91,14 +102,15 @@ function mousecontrol()
 		end
 		xmouselag[MouseLag] = keyinput.xmouse+xscreenoffset-xcursoroffset
 		ymouselag[MouseLag] = keyinput.ymouse-ycursoroffset
-		p1_tertiary = xmouselag[1]
-		p1_primary = ymouselag[1]
+		p1_x = xmouselag[1]
+		p1_y = ymouselag[1]
 	end
 	
-	gui.line(p1_tertiary-xscreenoffset-5, p1_primary-2, p1_tertiary-xscreenoffset+1, p1_primary-2, 999999)
-	gui.line(p1_tertiary-xscreenoffset-2, p1_primary-5, p1_tertiary-xscreenoffset-2, p1_primary+1, 999999)
+	gui.line(p1_x-xscreenoffset-5, p1_y-2, p1_x-xscreenoffset+1, p1_y-2, 999999)
+	gui.line(p1_x-xscreenoffset-2, p1_y-5, p1_x-xscreenoffset-2, p1_y+1, 999999)
 	
 	if (currentscreen == screen_ingame) then
+		
 		if input.get()[p1_primary] then
 			output.Y = true
 		end
@@ -116,18 +128,23 @@ function mousecontrol()
 	
 	
 	if (currentscreen == screen_stageselect) then
-		if (p1_tertiary >= 92 and  p1_tertiary <= 163) then
-			if (p1_primary >= 19 and p1_primary <= 82) then
+		if (p1_x >= 92 and  p1_x <= 163) then
+			if (p1_y >= 19 and p1_y <= 82) then
 				output.up = true
-			elseif (p1_primary >= 147 and p1_primary <= 210) then
+			elseif (p1_y >= 147 and p1_y <= 210) then
 				output.down = true
 			end
-		elseif (p1_primary <= 147 and p1_primary >= 82) then
-			if (p1_tertiary <= 82 and p1_tertiary >= 12) then
+		elseif (p1_y <= 147 and p1_y >= 82) then
+			if (p1_x <= 82 and p1_x >= 12) then
 				output.left = true
-			elseif (p1_tertiary <= 243 and p1_tertiary >= 172) then
+			elseif (p1_x <= 243 and p1_x >= 172) then
 				output.right = true
 			end
+		end
+		
+		if joypad.get(1).L and joypad.get(1).Start and EasySkipToFinalBoss then
+			memory.writebyte(0x7E05F0, -1)
+			memory.writebyte(0x7E05F1, -1)
 		end
 		
 		if input.get()[p1_primary] then
@@ -135,15 +152,20 @@ function mousecontrol()
 		end
 		
 	elseif (currentscreen == screen_characterselect) then
-		p1_character = memory.readbyte(0x7E04B6)
-		if (p1_tertiary > 128 and p1_character == 0) then
+		
+		if (p1_x > 128 and p1_character == 0) then
 			output.right = true
-		elseif (p1_tertiary < 128 and p1_character == 1) then
+		elseif (p1_x < 128 and p1_character == 1) then
 			output.left = true
 		end
 		
 		if input.get()[p1_primary] then
 			output.start = true
+		end
+		
+		if (joypad.get(1).L or input.get()[p1_secondary]) and EasySkipToStageSelect then
+			memory.writebyte(0x7E05F0, -1)
+			memory.writebyte(0x7E05F1, -1)
 		end
 		
 	elseif (currentscreen == screen_title) then
@@ -177,11 +199,11 @@ function hardmode()
 end
 
 function xcursor_set()
-	memory.writeword(0x7E1609, p1_tertiary)
+	if (screen_ingame) then memory.writeword(0x7E1609, p1_x) end
 end
 
 function ycursor_set()
-	memory.writebyte(0x7E1709, p1_primary)
+	if (screen_ingame) then memory.writebyte(0x7E1709, p1_y) end
 end
 
 function gamecurrentscreen()
@@ -199,5 +221,9 @@ if (EnforceHardMode) then
 end
 
 memory.registerwrite(0x7E0000, gamecurrentscreen)
+
+memory.registerwrite(0x7E1609, 2, xcursor_set)
+memory.registerwrite(0x7E1709, 1, ycursor_set)
+
 memory.registerread(0x7E1609, 2, xcursor_set)
-memory.registerread(0x7E1709, 2, ycursor_set)
+memory.registerread(0x7E1709, 1, ycursor_set)
