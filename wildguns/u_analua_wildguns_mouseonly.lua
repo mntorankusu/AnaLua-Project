@@ -23,7 +23,7 @@ currentscreen = 0
 --addresses
 address_p1_cursorx = 0x7E1609 --this one is 16-bit. everything else is 8-bit, or at least never goes above 255/127 or below 0/-127
 address_p1_cursory = 0x7E1709
-address_p1_character = 0x7E0000
+address_p1_character = 0x7E04B6
 address_currentscreen = 0x7E0000
 address_xscreenoffset = 0x7E0020
 

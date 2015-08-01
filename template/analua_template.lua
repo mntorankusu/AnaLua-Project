@@ -12,6 +12,8 @@ AnalogRightX = 0,
 AnalogRightY = 0, 
 LT = 0, 
 RT = 0, 
+LS = false,
+RS = false,
 A = false, 
 B = false, 
 X = false, 
@@ -26,46 +28,49 @@ sl = false,
 st = false  
 }
 
-p1isdown = controls
-p1wasdown = controls
-p1press = controls
-
-p2isdown = controls
-p2press = controls
-
 sendstring = "generic"
 udp:send(sendstring)
-print("hola")
 
 function mainloop()
+	udpsendreceive()
+end
+
+function udpsendreceive()
+timedout = false
 	repeat 
 		data = nil
 		data = udp:receive()
 		if data then
 			if string.byte(data,1) == 141 then
 				udpcontrol_timer = 0
-				p1isdown.AnalogLeftX = string.byte(data,2)-127
-				p1isdown.AnalogLeftY = string.byte(data,3)-127
-				p1isdown.AnalogRightX = string.byte(data,4)-127
-				p1isdown.AnalogRightY = string.byte(data,5)-127
+				p1current.AnalogLeftX = string.byte(data,2)-127
+				p1current.AnalogLeftY = string.byte(data,3)-127
+				p1current.AnalogRightX = string.byte(data,4)-127
+				p1current.AnalogRightY = string.byte(data,5)-127
+				p1current.LT = string.byte(data,6)-127
+				p1current.RT = string.byte(data,7)-127
+				if (timedout) then
+					timedout = false
+					udpcontrol_timer = 0
+					writemessage(string_receivedmessage)
+				end
 			else
 				udpcontrol_timer = udpcontrol_timer + 1
 			end
-			gui.text(0,0,string.format("LSX: %i, LSY: %i", p1isdown.AnalogLeftX, p1isdown.AnalogLeftY))
+		else
+				udpcontrol_timer = udpcontrol_timer + 1
 		end
 	until data == nil 
 	
-	i = 0
-	consoleprint = 6
-	repeat 
-		if (p1wasdown[i] ~= p1isdown[i]) then
-			--p1press[i] = true
-			gui.text(0,consoleprint, p1isdown[i])
-			consoleprint = consoleprint + 6
+	if (udpcontrol_timer >= udptimeout) then
+		timedout = true
+		if (udpcontrol_timer == udptimeout) then
+			writemessage(string_timedout)
 		end
-	until p1isdown[i] == nil
-	p1wasdown = p1isdown
+		udpcontrol_timer = udptimeout+1
+	end
 	
+	udp:send(string_announce)
 end
 
 emu.registerbefore(mainloop)
