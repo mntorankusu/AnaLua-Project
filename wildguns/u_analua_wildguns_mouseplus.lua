@@ -12,12 +12,12 @@ EasySkipToStageSelect = true --if true, hold L and press Start on the character 
 EasySkipToFinalBoss = true --if true, press L on the level select screen to skip to the final boss
 --I also discovered that the same cheat code allows you to skip to the final boss from the level select. this seems to be new information?
 
---[[these settings are related to analog control ignore them if you don't want to use a controller]]
-LeftAnalogControl = true --experimental? analog stick control. this game doesn't work especially well with it, but it's a neat thing to try.
+--[[these settings are related to analog control. ignore them if you don't want to use a controller]]
+LeftAnalogControl = false --experimental? analog stick control. this game doesn't work especially well with it, but it's a neat thing to try.
 RightAnalogControl = true --aiming with right analog. will automatically disable mouse aiming if a packet is received with controller data. if false, you can use the left side of your controller and the mouse at the same time.
 CanMoveWhileJumping = true --if true, allows you to adjust your jump in the air
 CanMoveWhileDoubleJumping = true --if true, allows you to adjust your jump in the air after double jumping
-OriginalDoubleJumpPhysics = false --if true, allows you to change your direction midair instantly when doublejumping. if false, you will keep any existing momentum when double jumping
+OriginalDoubleJumpPhysics = true --if true, allows you to change your direction midair instantly when doublejumping. if false, you will keep any existing momentum when double jumping
 AnnieMaxWalkingSpeed = 2 --2 is the default walking speed.  values are dithered so fractions are fine
 ClintMaxWalkingSpeed = 1 --clint's walking speed is actually 1.5(?). the game uses integers only, though, so it's 1 and 1+1 with some dithering happening somewhere(?)
 AccelerationRate = 0.125 --this is the rate of speed that your character will increase their walking speed when using analog controls
@@ -27,33 +27,29 @@ deadzone = 50 --deadzone of the analog stick, range 0 to 128
 udptimeout = 100 --in frames, how long to wait without input before abandoning analog input
 --[[end of settings]]
 
-
-xcursoroffset = -2
-ycursoroffset = -2
 xscreenoffset = 0
 currentscreen = 0
---addresses
-address_p1_cursorx = 0x7E1609 --this one is 16-bit. everything else is 8-bit, or at least never goes above 255/127 or below 0/-127
-address_p1_cursory = 0x7E1709
-address_p1_character = 0x7E04B6
-address_currentscreen = 0x7E0000
-address_xscreenoffset = 0x7E0020
+xcursoroffset = -2
+ycursoroffset = -2
+
+screens = {
 --most of these aren't used in the script, but I've documented them for reference
-screen_natsume = 0
-screen_title = 2
-screen_beatfinalboss = 8
-screen_ending = 10
-screen_option = 12
-screen_characterselect = 16
-screen_stageselect = 18
-screen_continue = 20
-screen_colortest = 22
-screen_ingame = 26 
-screen_gameresults = 28
-screen_versusmode_2p = 34
-screen_versusmode_com = 42
-screen_versusmoderesults = 44
-screen_copyright = 46
+natsume = 0,
+title = 2,
+beatfinalboss = 8,
+ending = 10,
+option = 12,
+characterselect = 16,
+stageselect = 18,
+continue = 20,
+colortest = 22,
+ingame = 26 ,
+gameresults = 28,
+versusmode_2p = 34,
+versusmode_com = 42,
+versusmoderesults = 44,
+copyright = 46
+}
 
 xmouselag = {}
 ymouselag = {}
@@ -83,25 +79,43 @@ right = false,
 L = false, 
 R = false, 
 sl = false, 
-st = false  
+st = false ,
+moveintent = 0,
+movespeed = 0,
+movespeed_buffer = 0,
+movespeed_output = 0,
+state = 0,
+addresses = {},
+values = {}
 }
 
-moveintent = 0
-movespeed = 0
-movespeed_buffer = 0
-movespeed_output = 0
+players = {
+controls,
+controls
+}
+
+--player specific addresses should be added like this
+players[1].addresses.cursorx = 0x7E1609
+players[1].addresses.cursory = 0x7E1709
+players[1].addresses.character = 0x7E04B6
+players[1].addresses.state = 0x7E1100
+
+--player specific values
+p1_character = 0
+p1_canmove = false
+p1_isjumping = false
+p1_primary = "leftclick"
+p1_secondary = "rightclick"
+p1_tertiary = "space"
+p1_lasso = "middleclick"
+
+print(players[1].addresses.cursorx)
+
+--global addresses
+address_currentscreen = 0x7E0000
+address_xscreenoffset = 0x7E0020
 
 clamp = .125
-
-p1current = controls
-p1last = controls
-p1changed = controls
-
-p2current = controls
-p2last = controls
-p2changed = controls
-
-p1_character = 0
 
 switch = true
 
@@ -110,17 +124,13 @@ messagetimer = 0
 announceevery = 60
 announcetimer = 0
 
-p1_primary = "leftclick"
-p1_secondary = "rightclick"
-p1_tertiary = "space"
-p1_lasso = "middleclick"
+
 
 string_receivedmessage = "Analog mode enabled."
 string_timedout = nil
 string_announce = "wildgunu"
 
-screenchecka = 0
-gui.opacity(0.5)
+gui.opacity(0.7)
 print("Mouse Control for Wild Guns by mntorankusu - AnaLua project")
 print("Use the arrow keys to adjust the X and Y offset until the crosshair position matches your mouse. This is likely to change if you resize the emulator window.")
 
@@ -141,10 +151,8 @@ function writemessage(themessage)
 	end
 end
 
-writemessage("Wild Guns Mouse Control Script - AnaLua project")
-
 function mousecontrol()
-	
+	--only works for player 1 until I get remote dinput mice working.
 	output = {}
 	keyinput = {}
 	
@@ -153,10 +161,6 @@ function mousecontrol()
 	p1_character = memory.readbyte(address_p1_character)
 
 	keyinput = input.get()
-	
-	if (keyinput.plus) then
-		screenchecka = screenchecka + 0.1
-	end
 	
 	print(string.format("X: %i", keyinput.xmouse))
 	print(string.format("Y: %i", keyinput.ymouse))
@@ -170,8 +174,8 @@ function mousecontrol()
 	end
 	
 	if (MouseLag == 0) then
-		p1current.MouseX = keyinput.xmouse+xscreenoffset-xcursoroffset
-		p1current.MouseY = keyinput.ymouse-ycursoroffset
+		players[1].MouseX = keyinput.xmouse+xscreenoffset-xcursoroffset
+		players[1].MouseY = keyinput.ymouse-ycursoroffset
 	else
 		for i = 1,MouseLag-1 do
 			xmouselag[i] = xmouselag[i+1]
@@ -179,14 +183,14 @@ function mousecontrol()
 		end
 		xmouselag[MouseLag] = keyinput.xmouse+xscreenoffset-xcursoroffset
 		ymouselag[MouseLag] = keyinput.ymouse-ycursoroffset
-		p1current.MouseX = xmouselag[1]
-		p1current.MouseY = ymouselag[1]
+		players[1].MouseX = xmouselag[1]
+		players[1].MouseY = ymouselag[1]
 	end
 	
-	gui.line(p1current.MouseX-xscreenoffset-5, p1current.MouseY-2, p1current.MouseX-xscreenoffset+1, p1current.MouseY-2, 999999)
-	gui.line(p1current.MouseX-xscreenoffset-2, p1current.MouseY-5, p1current.MouseX-xscreenoffset-2, p1current.MouseY+1, 999999)
+	gui.line(players[1].MouseX-xscreenoffset-5, players[1].MouseY-2, players[1].MouseX-xscreenoffset+1, players[1].MouseY-2, 999999)
+	gui.line(players[1].MouseX-xscreenoffset-2, players[1].MouseY-5, players[1].MouseX-xscreenoffset-2, players[1].MouseY+1, 999999)
 	
-	if (currentscreen == screen_ingame) then
+	if (currentscreen == screens.ingame) then
 		
 		if input.get()[p1_primary] then
 			output.Y = true
@@ -204,17 +208,17 @@ function mousecontrol()
 	end
 	
 	
-	if (currentscreen == screen_stageselect) then
-		if (p1current.MouseX >= 92 and  p1current.MouseX <= 163) then
-			if (p1current.MouseY >= 19 and p1current.MouseY <= 82) then
+	if (currentscreen == screens.stageselect) then
+		if (players[1].MouseX >= 92 and  players[1].MouseX <= 163) then
+			if (players[1].MouseY >= 19 and players[1].MouseY <= 82) then
 				output.up = true
-			elseif (p1current.MouseY >= 147 and p1current.MouseY <= 210) then
+			elseif (players[1].MouseY >= 147 and players[1].MouseY <= 210) then
 				output.down = true
 			end
-		elseif (p1current.MouseY <= 147 and p1current.MouseY >= 82) then
-			if (p1current.MouseX <= 82 and p1current.MouseX >= 12) then
+		elseif (players[1].MouseY <= 147 and players[1].MouseY >= 82) then
+			if (players[1].MouseX <= 82 and players[1].MouseX >= 12) then
 				output.left = true
-			elseif (p1current.MouseX <= 243 and p1current.MouseX >= 172) then
+			elseif (players[1].MouseX <= 243 and players[1].MouseX >= 172) then
 				output.right = true
 			end
 		end
@@ -228,11 +232,11 @@ function mousecontrol()
 			output.start = true
 		end
 		
-	elseif (currentscreen == screen_characterselect) then
+	elseif (currentscreen == screens.characterselect) then
 		gui.text(0,16,p1_character)
-		if (p1current.MouseX > 128 and p1_character == 0) then
+		if (players[1].MouseX > 128 and p1_character == 0) then
 			output.right = true
-		elseif (p1current.MouseX < 128 and p1_character == 1) then
+		elseif (players[1].MouseX < 128 and p1_character == 1) then
 			output.left = true
 		end
 		
@@ -245,7 +249,7 @@ function mousecontrol()
 			memory.writebyte(0x7E05F1, -1)
 		end
 		
-	elseif (currentscreen == screen_title) then
+	elseif (currentscreen == screens.title) then
 		if input.get()[p1_primary] then
 			output.start = true
 		end
@@ -282,12 +286,12 @@ timedout = false
 		if data then
 			if string.byte(data,1) == 141 then
 				udpcontrol_timer = 0
-				p1current.AnalogLeftX = string.byte(data,2)-127
-				p1current.AnalogLeftY = string.byte(data,3)-127
-				p1current.AnalogRightX = string.byte(data,4)-127
-				p1current.AnalogRightY = string.byte(data,5)-127
-				p1current.LT = string.byte(data,6)-127
-				p1current.RT = string.byte(data,7)-127
+				players[1].AnalogLeftX = string.byte(data,2)-127
+				players[1].AnalogLeftY = string.byte(data,3)-127
+				players[1].AnalogRightX = string.byte(data,4)-127
+				players[1].AnalogRightY = string.byte(data,5)-127
+				players[1].LT = string.byte(data,6)-127
+				players[1].RT = string.byte(data,7)-127
 				if (timedout) then
 					timedout = false
 					udpcontrol_timer = 0
@@ -313,27 +317,27 @@ end
 
 function analogcontrol()
 	
-	if p1_state ~= 8 and memory.readbyte(0x7E1100) == 8 and OriginalDoubleJumpPhysics then
+	if players[1].values.state ~= 8 and memory.readbyte(players[1].addresses.state) == 8 and OriginalDoubleJumpPhysics then
 		movespeed = moveintent
 	end
 	
-	p1_state = memory.readbyte(0x7E1100)
+	players[1].values.state = memory.readbyte(players[1].addresses.state)
 	
 	p1_canmove = false
 	p1_isjumping = false
 	
-	if p1_state == 2 then 
+	if players[1].values.state == 2 then 
 		p1_canmove = true 
 	end
 	
-	if p1_state == 6 then
+	if players[1].values.state == 6 then
 		p1_isjumping = true
 		if CanMoveWhileJumping then
 			p1_canmove = true
 		end
 	end
 
-	if p1_state == 8 then
+	if players[1].values.state == 8 then
 		p1_isjumping = true
 		if CanMoveWhileDoubleJumping then
 			p1_canmove = true
@@ -350,10 +354,10 @@ function analogcontrol()
 	
 	AccelMultiplier = maxspeed_l / maxspeed_r
 	
-	if p1current.AnalogLeftX > deadzone then
-		moveintent = (p1current.AnalogLeftX * maxspeed_r) / 127
-	elseif p1current.AnalogLeftX < -deadzone then
-		moveintent = (p1current.AnalogLeftX * maxspeed_l) / 127
+	if players[1].AnalogLeftX > deadzone then
+		moveintent = (players[1].AnalogLeftX * maxspeed_r) / 127
+	elseif players[1].AnalogLeftX < -deadzone then
+		moveintent = (players[1].AnalogLeftX * maxspeed_l) / 127
 	elseif joypad.get(1).left == true then
 		moveintent = -maxspeed_l
 	elseif joypad.get(1).right == true then
@@ -421,22 +425,21 @@ function hardmode()
 	memory.writebyte(0x7EFF34, 2)
 end
 
-
 function p1_current_gun()
 	p1_currentgun = memory.readbyte(0x7E1FA8)
 end
 
 function xcursor_set()
-	if (screen_ingame) then memory.writeword(0x7E1609, p1current.MouseX) end
+	if (screens.ingame) then memory.writeword(players[1].addresses.cursorx, players[1].MouseX) end
 end
 
 function ycursor_set()
-	if (screen_ingame) then memory.writebyte(0x7E1709, p1current.MouseY) end
+	if (screens.ingame) then memory.writebyte(players[1].addresses.cursory, players[1].MouseY) end
 end
 
 function gamecurrentscreen()
 	currentscreen = memory.readbyte(0x7E0000)
-	if (SkipNatsumeLogo and currentscreen == screen_natsume) then
+	if (SkipNatsumeLogo and currentscreen == screens.natsume) then
 		memory.writebyte(0x7E0000, 2)
 		currentscreen = 2
 	end
@@ -449,7 +452,7 @@ if (EnforceHardMode) then
 end
 
 function moveit()
-	if p1_canmove and (currentscreen == screen_ingame or currentscreen == screen_versusmode_2p or currentscreen == screen_versusmode_com) then
+	if p1_canmove and (currentscreen == screens.ingame or currentscreen == screens.versusmode_2p or currentscreen == screens.versusmode_com) then
 		memory.writebyte(0x7E1C01, movespeed_output)
 	end
 end
@@ -462,7 +465,9 @@ if (LeftAnalogControl) then
 	memory.register(0x7E1C01, moveit)
 end
 
-memory.registerwrite(0x7E1609, 2, xcursor_set)
-memory.registerwrite(0x7E1709, 1, ycursor_set)
-memory.registerread(0x7E1609, 2, xcursor_set)
-memory.registerread(0x7E1709, 1, ycursor_set)
+memory.registerwrite(players[1].addresses.cursorx, 2, xcursor_set)
+memory.registerwrite(players[1].addresses.cursory, 1, ycursor_set)
+memory.registerread(players[1].addresses.cursorx, 2, xcursor_set)
+memory.registerread(players[1].addresses.cursory, 1, ycursor_set)
+
+writemessage("Wild Guns Mouse Control Script - AnaLua project")
