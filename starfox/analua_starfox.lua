@@ -198,38 +198,37 @@ function setdoubletapcounter()
 	memory.writebyte(0x7E1502, 3)
 end
 
-MouseLag = 30
+cameralag = 30
 
-xmouselag = {}
-ymouselag = {}
+xcameralag = {}
+ycameralag = {}
 
-for i = 1,MouseLag do
-	xmouselag[i] = 0
-	ymouselag[i] = 0
+for i = 1,cameralag do
+	xcameralag[i] = 0
+	ycameralag[i] = 0
 end
 
-function camerafuckery()
-	ymouselagbuffer = 0
-	xmouselagbuffer = 0
+function camerahacks()
+	ycameralagbuffer = 0
+	xcameralagbuffer = 0
 	
-	for i = 1,MouseLag-1 do
-		xmouselag[i] = xmouselag[i+1]
-		ymouselag[i] = ymouselag[i+1]
+	for i = 1,cameralag-1 do
+		xcameralag[i] = xcameralag[i+1]
+		ycameralag[i] = ycameralag[i+1]
 	end
 	
-	xmouselag[MouseLag] = players[1].AnalogRightX
-	ymouselag[MouseLag] = players[1].AnalogRightY
+	xcameralag[cameralag] = players[1].AnalogRightX
+	ycameralag[cameralag] = players[1].AnalogRightY
 	
-	for i = 1,MouseLag do
-		ymouselagbuffer = ymouselagbuffer + ymouselag[i]
-		xmouselagbuffer = xmouselagbuffer + xmouselag[i]
+	for i = 1,cameralag do
+		ycameralagbuffer = ycameralagbuffer + ycameralag[i]
+		xcameralagbuffer = xcameralagbuffer + xcameralag[i]
 	end
 	
-	ymouselagbuffer = ymouselagbuffer / MouseLag
+	ycameralagbuffer = ycameralagbuffer / cameralag
 	
-	camerayoffset = 0-ymouselagbuffer/16
-	cameraxoffset = 0-xmouselagbuffer/16
-	memory.writebyte(0x7E16F4, cameraxoffset)
+	camerayoffset = 0-ycameralagbuffer/16
+	cameraxoffset = 0-xcameralagbuffer/16
 	
 	memory.writebyte(0x7E1630, camerayoffset)
 	memory.writebyte(0x7E1636, camerayoffset)
@@ -241,41 +240,16 @@ function camerafuckery()
 		memory.writebyte(0x7E163A, -roll) --3D camera roll
 	end
 	
-	print("heya")
-	--memory.writebyte(0x7E0348, cameraoffset) --another pitch value from -127 to 127
-	--memory.writebyte(0x7E0349, cameraoffset) --another yaw value from -127 to 127
-	--memory.writebyte(0x7E034A, cameraoffset) --another roll value from -127 to 127
-	
-	--memory.writebyte(0x7E00C3, memory.readbyte(0x7E00C3) - (players[1].AnalogRightY / 32)) -- camera Y
-	--memory.writebyte(0x7E00C1, memory.readbyte(0x7E00C1) + (players[1].AnalogRightX / 32)) -- camera X
-	
-	--memory.writebyte(0x7E1234, cameraoffset) -- camera X again?
-	--memory.writebyte(0x7E1235, cameraoffset) -- camera X again?
-	
-	--memory.writebyte(0x7E03E4, cameraoffset) -- camera X again?
-	
-	--memory.writebyte(0x7E00C2, cameraoffset) -- camera Y-Rotation -- really low resolution?
-	
-	--memory.writebyte(0x7E034B, 0) --movement speed?
-	--memory.writebyte(0x7E034C, cameraoffset) --crash
-	--memory.writebyte(0x7E034D, cameraoffset) --crash
-	
-end
-
-function cameracontrol()
-	--memory.writebyte(0x7E00C3, memory.readbyte(0x7E00C3) - (players[1].AnalogRightY / 16)) -- camera Y
-	--memory.writebyte(0x7E00C1, memory.readbyte(0x7E00C1) + (players[1].AnalogRightX / 16)) -- camera X
-	--memory.writeword(0x7E00C2, (players[1].AnalogRightX / 2))
 end
 
 --if (booloptions.SingleTapToBarrelRoll) then memory.registerread(0x7E1502, 1, setdoubletapcounter) end
-memory.registerread(0x7E1830, 1, camerafuckery)
-memory.registerread(0x7E1836, 1, camerafuckery)
-memory.registerread(0x7E18C8, 1, camerafuckery)
+memory.registerread(0x7E1830, 1, camerahacks)
+memory.registerread(0x7E1836, 1, camerahacks)
+memory.registerread(0x7E18C8, 1, camerahacks)
 
-memory.registerread(0x7E163D, 1, camerafuckery)
-memory.registerread(0x7E163A, 1, camerafuckery)
-memory.registerread(0x7E18C8, 1, camerafuckery)
+memory.registerread(0x7E163D, 1, camerahacks)
+memory.registerread(0x7E163A, 1, camerahacks)
+memory.registerread(0x7E18C8, 1, camerahacks)
 
 memory.registerwrite(0x7E1509, 2, setroll)
 memory.registerwrite(0x7E1232, 2, setpitch)
