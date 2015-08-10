@@ -3,10 +3,12 @@
 
 local socket = require "socket"
 udp = socket.udp()
-udp:settimeout(0)
-udp:setpeername("localhost", 3478)
+udp:settimeout(1)
+udp:setpeername("localhost", 4242)
 udpcontrol_timeout = 120
 udpcontrol_timer  = 0
+udp_sendevery = 60
+udp_counter = 0
 
 controls = {
 AnalogLeftX = 0, 
@@ -28,18 +30,21 @@ right = false,
 L = false, 
 R = false, 
 sl = false, 
-st = false  
+st = false,
 addresses = {}
 }
 
 players = {
-player1 = controls,
-player2 = controls
+controls,
+controls
 }
+
+output = {}
 
 string_receivedmessage = "Input received."
 string_timedout = "Network input timed out."
 string_announce = "genericx"
+udp:send(string_announce)
 
 function mainloop()
 	udpsendreceive()
@@ -52,6 +57,7 @@ function udpsendreceive()
 		player = 0
 		data = udp:receive()
 		if data then
+			print(data)
 			if string.byte(data,1) > 140 and string.byte(data,1) < 145 then
 				player = string.byte(data,1)-140;
 				udpcontrol_timer = 0
@@ -64,7 +70,7 @@ function udpsendreceive()
 				if (timedout) then
 					timedout = false
 					udpcontrol_timer = 0
-					writemessage(string_receivedmessage)
+					--writemessage(string_receivedmessage)
 				end
 			else
 				udpcontrol_timer = udpcontrol_timer + 1
@@ -74,15 +80,19 @@ function udpsendreceive()
 		end
 	until data == nil 
 	
-	if (udpcontrol_timer >= udptimeout) then
+	if (udpcontrol_timer >= udpcontrol_timeout) then
 		timedout = true
-		if (udpcontrol_timer == udptimeout) then
-			writemessage(string_timedout)
+		if (udpcontrol_timer == udpcontrol_timeout) then
+			--writemessage(string_timedout)
 		end
-		udpcontrol_timer = udptimeout+1
+		udpcontrol_timer = udpcontrol_timeout+1
 	end
 	
-	udp:send(string_announce)
+	udp_counter = udp_counter + 1
+	if (udp_counter > udp_sendevery) then
+		udp:send(string_announce)
+		udp_counter = 0
+	end
 end
 
 emu.registerbefore(mainloop)
