@@ -1,9 +1,35 @@
+--[[Options]]--
+--[[
+this structure is so I can pass this information to the server and allow game configuration
+in the server itself. it will be pretty cool.
+]]--
+
+booloptions = {
+SingleTapToBarrelRoll = true,
+AnalogTriggersLR = false,
+FreeRoll = true,
+LockCameraToRoll = false;
+}
+
+optionlabels = {
+"Single Tap to Barrel Roll",
+"Analog Triggers Activate L/R"
+}
+
+optiondescriptions = {
+"If enabled, you only need to tap the L or R button once to barrel roll.",
+"If enabled, analog trigger press will activate the L/R buttons."
+}
+
 local socket = require "socket"
 udp = socket.udp()
 udp:settimeout(0)
 udp:setpeername("localhost", 3478)
 udpcontrol_timeout = 120
-udpcontrol_timer  = 0
+udpcontrol_timer = 0
+
+udp_sendevery = 60
+udp_counter = 0
 
 controls = {
 AnalogLeftX = 0, 
@@ -12,6 +38,8 @@ AnalogRightX = 0,
 AnalogRightY = 0, 
 LT = 0, 
 RT = 0, 
+LS = false,
+RS = false,
 A = false, 
 B = false, 
 X = false, 
@@ -26,12 +54,17 @@ sl = false,
 st = false  
 }
 
-p1current = controls
+players = {
+controls,
+controls
+}
 
-p1last = controls
+output = {}
 
-p2 = controls
-p2last = controls
+CanMove = true
+modfy = 36
+
+triggerthreshold = -120
 
 rollintent = 0
 turnrollintent = 0
@@ -44,64 +77,112 @@ pitchmax = 3584
 yawmax = pitchmax
 
 roll = 0
+freeroll = 0
 turnroll = 0
 pitch = 0
 yaw = 0
 
-rollspeed = 4
-turnrollspeed = 160
-pitchspeed = 160
-yawspeed = 160
+rollspeed = 3
+turnrollspeed = 70
+pitchspeed = 70
+yawspeed = 70
 
 cameraoffset = 0
+sendstring = "starfoxu"
+udp:send(sendstring) 
+--for some reason it doesn't work until a datagram has been sent.
+--this isn't really a problem but I've had cases where it randomly doesn't work so I'd like to figure out why
 
-sendstring = "generic"
-udp:send(sendstring)
-print("hola")
+
+FreeRollLag = 30
+freerollbuffer = 0
+freerollintent = {}
+
+for i = 1,FreeRollLag do
+	freerollintent[i] = 20
+end
 
 function mainloop()
+	output = {}
+	padinput = {}
 	repeat 
 		data = nil
 		data = udp:receive()
+		
+		
+		
 		if data then
 			if string.byte(data,1) == 141 then
+				--print(string.byte(data,1))
 				udpcontrol_timer = 0
-				p1current.AnalogLeftX = string.byte(data,2)-127
-				p1current.AnalogLeftY = string.byte(data,3)-127
-				p1current.AnalogRightX = string.byte(data,4)-127
-				p1current.AnalogRightY = string.byte(data,5)-127
-				p1current.LT = string.byte(data,6)-127
-				p1current.RT = string.byte(data,7)-127
+				players[1].AnalogLeftX = string.byte(data,2)-127
+				players[1].AnalogLeftY = string.byte(data,3)-127
+				players[1].AnalogRightX = string.byte(data,4)-127
+				players[1].AnalogRightY = string.byte(data,5)-127
+				players[1].LT = string.byte(data,6)-127
+				players[1].RT = string.byte(data,7)-127
 			else
 				udpcontrol_timer = udpcontrol_timer + 1
 			end
-			gui.text(0,2,string.format("LSX: %i, LSY: %i", p1current.AnalogLeftX, p1current.AnalogLeftY))
+			gui.text(0,2,string.format("LSX: %i, LSY: %i", players[1].AnalogLeftX, players[1].AnalogLeftY))
 			gui.text(0,9,string.format("RollI: %i, Roll: %i", rollintent, roll))
 		end
 	until data == nil 
 	
-	rollintent = (p1current.LT - p1current.RT) * rollmax/127
-	pitchintent = (p1current.AnalogLeftY * pitchmax)/128
-	turnrollintent = -(p1current.AnalogLeftX * turnrollmax)/128
-	yawintent = -(p1current.AnalogLeftX * yawmax)/128
-
+	rollintent = (players[1].LT - players[1].RT) * rollmax/127
+	pitchintent = (players[1].AnalogLeftY * pitchmax)/128
+	turnrollintent = -(players[1].AnalogLeftX * turnrollmax)/128
+	yawintent = -(players[1].AnalogLeftX * (yawmax + math.abs(roll*modfy)))/128
+	
 	roll = roll + ((rollintent - roll) * (rollspeed*2)) / rollmax
 	pitch = pitch + ((pitchintent - pitch) * (pitchspeed*2)) / pitchmax
-	yaw = yaw + ((yawintent - yaw) * (yawspeed*2)) / yawmax
+	yaw = yaw + ((yawintent - yaw) * ((yawspeed+math.abs(roll))*2)) / (yawmax + math.abs(roll*modfy))
 	turnroll = turnroll + ((turnrollintent - turnroll) * (turnrollspeed*2)) / turnrollmax
 	
-	if (input.get().space)
-		then cameraoffset = cameraoffset + 1
-	elseif (input.get().backspace)
-		then cameraoffset = cameraoffset - 1
+	for i = 1,FreeRollLag-1 do
+		freerollintent[i] = freerollintent[i+1]
 	end
 	
-	gui.text(0,16,string.format("testvalue: %i",cameraoffset))
+	freerollintent[FreeRollLag] = rollintent
+	
+	for i = 1,FreeRollLag do
+		freerollbuffer = freerollbuffer + freerollintent[i]
+	end
+	
+	freerollbuffer = freerollbuffer / FreeRollLag
+	--freerollbuffer = freerollintent[1]
+	
+	if (booloptions.FreeRoll) then freeroll = freeroll + (freerollbuffer/10) end
+	
+	if (freeroll > 127) then freeroll = freeroll -255
+	elseif (freeroll < -127) then freeroll = freeroll + 255 end
+	
+	if (booloptions.AnalogTriggersLR) then
+		if (players[1].RT > -100) then output.R = true end
+		if (players[1].LT > triggerthreshold) then output.L = true end
+	end
+	
+	padinput = joypad.get(1)
+	
+	if (booloptions.SingleTapToBarrelRoll) then
+		if (padinput.R or padinput.L) then
+			setdoubletapcounter()
+		end
+	end
+	
+	print(roll)
+	
+	gui.text(2, 16, yawmax + math.abs(roll*modfy))
+	
+	
+
+	joypad.set(1, output)
 	
 end
 
 function setroll()
-	memory.writebyte(0x7E1509, roll)
+	if (booloptions.FreeRoll) then memory.writebyte(0x7E1509, freeroll) end
+	if (not booloptions.FreeRoll) then memory.writebyte(0x7E1509, roll) end
 end
 
 function setpitch()
@@ -113,16 +194,60 @@ function setyaw()
 	memory.writeword(0x7E1234, yaw)
 end
 
+function setdoubletapcounter()
+	memory.writebyte(0x7E1502, 3)
+end
 
+MouseLag = 30
+
+xmouselag = {}
+ymouselag = {}
+
+for i = 1,MouseLag do
+	xmouselag[i] = 0
+	ymouselag[i] = 0
+end
 
 function camerafuckery()
-
+	ymouselagbuffer = 0
+	xmouselagbuffer = 0
+	
+	for i = 1,MouseLag-1 do
+		xmouselag[i] = xmouselag[i+1]
+		ymouselag[i] = ymouselag[i+1]
+	end
+	
+	xmouselag[MouseLag] = players[1].AnalogRightX
+	ymouselag[MouseLag] = players[1].AnalogRightY
+	
+	for i = 1,MouseLag do
+		ymouselagbuffer = ymouselagbuffer + ymouselag[i]
+		xmouselagbuffer = xmouselagbuffer + xmouselag[i]
+	end
+	
+	ymouselagbuffer = ymouselagbuffer / MouseLag
+	
+	camerayoffset = 0-ymouselagbuffer/16
+	cameraxoffset = 0-xmouselagbuffer/16
+	memory.writebyte(0x7E16F4, cameraxoffset)
+	
+	memory.writebyte(0x7E1630, camerayoffset)
+	memory.writebyte(0x7E1636, camerayoffset)
+	memory.writebyte(0x7E18C8, camerayoffset)
+	
+	if (LockCameraToRoll) then
+		memory.writebyte(0x7E1634, -roll)
+		memory.writebyte(0x7E064E, -roll)
+		memory.writebyte(0x7E163A, -roll) --3D camera roll
+	end
+	
+	print("heya")
 	--memory.writebyte(0x7E0348, cameraoffset) --another pitch value from -127 to 127
 	--memory.writebyte(0x7E0349, cameraoffset) --another yaw value from -127 to 127
 	--memory.writebyte(0x7E034A, cameraoffset) --another roll value from -127 to 127
 	
-	--memory.writebyte(0x7E00C3, memory.readbyte(0x7E00C3) - (p1current.AnalogRightY / 32)) -- camera Y
-	--memory.writebyte(0x7E00C1, memory.readbyte(0x7E00C1) + (p1current.AnalogRightX / 32)) -- camera X
+	--memory.writebyte(0x7E00C3, memory.readbyte(0x7E00C3) - (players[1].AnalogRightY / 32)) -- camera Y
+	--memory.writebyte(0x7E00C1, memory.readbyte(0x7E00C1) + (players[1].AnalogRightX / 32)) -- camera X
 	
 	--memory.writebyte(0x7E1234, cameraoffset) -- camera X again?
 	--memory.writebyte(0x7E1235, cameraoffset) -- camera X again?
@@ -138,18 +263,22 @@ function camerafuckery()
 end
 
 function cameracontrol()
-	--memory.writebyte(0x7E00C3, memory.readbyte(0x7E00C3) - (p1current.AnalogRightY / 16)) -- camera Y
-	--memory.writebyte(0x7E00C1, memory.readbyte(0x7E00C1) + (p1current.AnalogRightX / 16)) -- camera X
-	--memory.writeword(0x7E00C2, (p1current.AnalogRightX / 2))
+	--memory.writebyte(0x7E00C3, memory.readbyte(0x7E00C3) - (players[1].AnalogRightY / 16)) -- camera Y
+	--memory.writebyte(0x7E00C1, memory.readbyte(0x7E00C1) + (players[1].AnalogRightX / 16)) -- camera X
+	--memory.writeword(0x7E00C2, (players[1].AnalogRightX / 2))
 end
 
+--if (booloptions.SingleTapToBarrelRoll) then memory.registerread(0x7E1502, 1, setdoubletapcounter) end
+memory.registerread(0x7E1830, 1, camerafuckery)
+memory.registerread(0x7E1836, 1, camerafuckery)
+memory.registerread(0x7E18C8, 1, camerafuckery)
 
-
-memory.registerread(0x7E00C3, 1, cameracontrol)
-
-memory.registerread(0x7E0346, 4, camerafuckery)
+memory.registerread(0x7E163D, 1, camerafuckery)
+memory.registerread(0x7E163A, 1, camerafuckery)
+memory.registerread(0x7E18C8, 1, camerafuckery)
 
 memory.registerwrite(0x7E1509, 2, setroll)
 memory.registerwrite(0x7E1232, 2, setpitch)
 memory.registerwrite(0x7E1234, 2, setyaw)
-emu.registerbefore(mainloop)
+memory.registerread(0x7E1234, 1, mainloop)
+--emu.registerbefore(mainloop)
