@@ -14,7 +14,7 @@ EasySkipToFinalBoss = true --if true, press L on the level select screen to skip
 --I also discovered that the same cheat code allows you to skip to the final boss from the level select. this seems to be new information?
 
  -- ANALOG SETTINGS
-LeftAnalogControl = false --experimental? analog stick control. this game doesn't work especially well with it, but it's a neat thing to try.
+LeftAnalogControl = true --experimental? analog stick control. this game doesn't work especially well with it, but it's a neat thing to try.
 RightAnalogControl = true --aiming with right analog. will automatically disable mouse aiming if a packet is received with controller data. if false, you can use the left side of your controller and the mouse at the same time.
 CanMoveWhileJumping = true --if true, allows you to adjust your jump in the air
 CanMoveWhileDoubleJumping = true --if true, allows you to adjust your jump in the air after double jumping
@@ -81,7 +81,7 @@ right = false,
 L = false, 
 R = false, 
 sl = false, 
-st = false ,
+st = false,
 moveintent = 0,
 movespeed = 0,
 movespeed_buffer = 0,
@@ -89,14 +89,14 @@ movespeed_output = 0,
 state = 0,
 addresses = {},
 values = {
-character = 0,
-canmove = false,
-isjumping = false,
-primary = "leftclick",
-secondary = "rightclick",
-tertiary = "space",
-lasso = "middleclick",
-}
+	character = 0,
+	canmove = false,
+	isjumping = false,
+	primary = "leftclick",
+	secondary = "rightclick",
+	tertiary = "space",
+	lasso = "middleclick"
+	},
 }
 
 players = {
@@ -112,8 +112,6 @@ players[1].addresses.state = 0x7E1100
 
 --player specific values
 
-
-print(players[1].addresses.cursorx)
 
 --global addresses
 address_currentscreen = 0x7E0000
@@ -166,9 +164,6 @@ function mousecontrol()
 
 	keyinput = input.get()
 	
-	print(string.format("X: %i", keyinput.xmouse))
-	print(string.format("Y: %i", keyinput.ymouse))
-	
 	if (osdmessage) then
 		gui.text(2,219, osdmessage)
 		messagetimer = messagetimer + 1
@@ -196,11 +191,11 @@ function mousecontrol()
 	
 	if (currentscreen == screens.ingame) then
 		
-		if input.get()[players[1].primary] then
+		if input.get()[players[1].values.primary] then
 			output.Y = true
 		end
 
-		if input.get()[players[1].secondary] then
+		if input.get()[players[1].values.secondary] then
 			output.B = true
 		end
 	
@@ -232,7 +227,7 @@ function mousecontrol()
 			memory.writebyte(0x7E05F1, -1)
 		end
 		
-		if input.get()[players[1].primary] then
+		if input.get()[players[1].values.primary] then
 			output.start = true
 		end
 		
@@ -244,17 +239,17 @@ function mousecontrol()
 			output.left = true
 		end
 		
-		if input.get()[players[1].primary] then
+		if input.get()[players[1].values.primary] then
 			output.start = true
 		end
 		
-		if (joypad.get(1).L or input.get()[players[1].secondary]) and EasySkipToStageSelect then
+		if (joypad.get(1).L or input.get()[players[1].values.secondary]) and EasySkipToStageSelect then
 			memory.writebyte(0x7E05F0, -1)
 			memory.writebyte(0x7E05F1, -1)
 		end
 		
 	elseif (currentscreen == screens.title) then
-		if input.get()[players[1].primary] then
+		if input.get()[players[1].values.primary] then
 			output.start = true
 		end
 	end
@@ -288,6 +283,7 @@ timedout = false
 		data = nil
 		data = udp:receive()
 		if data then
+			print(data)
 			if string.byte(data,1) == 141 then
 				udpcontrol_timer = 0
 				players[1].AnalogLeftX = string.byte(data,2)-127
@@ -322,7 +318,7 @@ end
 function analogcontrol()
 	
 	if players[1].values.state ~= 8 and memory.readbyte(players[1].addresses.state) == 8 and OriginalDoubleJumpPhysics then
-		movespeed = moveintent
+		players[1].movespeed = players[1].moveintent
 	end
 	
 	players[1].values.state = memory.readbyte(players[1].addresses.state)
@@ -337,14 +333,14 @@ function analogcontrol()
 	if players[1].values.state == 6 then
 		players[1].isjumping = true
 		if CanMoveWhileJumping then
-			players[1].canmove = true
+			players[1].players[1].canmove = true
 		end
 	end
 
 	if players[1].values.state == 8 then
 		players[1].isjumping = true
 		if CanMoveWhileDoubleJumping then
-			players[1].canmove = true
+			players[1].players[1].canmove = true
 		end
 	end
 	
@@ -359,52 +355,52 @@ function analogcontrol()
 	AccelMultiplier = maxspeed_l / maxspeed_r
 	
 	if players[1].AnalogLeftX > deadzone then
-		moveintent = (players[1].AnalogLeftX * maxspeed_r) / 127
+		players[1].moveintent = (players[1].AnalogLeftX * maxspeed_r) / 127
 	elseif players[1].AnalogLeftX < -deadzone then
-		moveintent = (players[1].AnalogLeftX * maxspeed_l) / 127
+		players[1].moveintent = (players[1].AnalogLeftX * maxspeed_l) / 127
 	elseif joypad.get(1).left == true then
-		moveintent = -maxspeed_l
+		players[1].moveintent = -maxspeed_l
 	elseif joypad.get(1).right == true then
-		moveintent = maxspeed_r
+		players[1].moveintent = maxspeed_r
 	else
-		moveintent = 0
+		players[1].moveintent = 0
 	end
 	
-	if (movespeed < moveintent) then 
-		if (players[1].isjumping) then movespeed = movespeed + (JumpAccelerationRate) 
-		elseif (movespeed < 0) then movespeed = movespeed + (DecelerationRate*AccelMultiplier)
-		else movespeed = movespeed + (AccelerationRate) end
+	if (players[1].movespeed < players[1].moveintent) then 
+		if (players[1].isjumping) then players[1].movespeed = players[1].movespeed + (JumpAccelerationRate) 
+		elseif (players[1].movespeed < 0) then players[1].movespeed = players[1].movespeed + (DecelerationRate*AccelMultiplier)
+		else players[1].movespeed = players[1].movespeed + (AccelerationRate) end
 	end
 	
-	if (movespeed > moveintent) then 
-		if (players[1].isjumping) then movespeed = movespeed - (JumpAccelerationRate*AccelMultiplier)
-		elseif (movespeed > 0) then movespeed = movespeed - (DecelerationRate)
-		else movespeed = movespeed - (AccelerationRate*AccelMultiplier) end
+	if (players[1].movespeed > players[1].moveintent) then 
+		if (players[1].isjumping) then players[1].movespeed = players[1].movespeed - (JumpAccelerationRate*AccelMultiplier)
+		elseif (players[1].movespeed > 0) then players[1].movespeed = players[1].movespeed - (DecelerationRate)
+		else players[1].movespeed = players[1].movespeed - (AccelerationRate*AccelMultiplier) end
 	end
 	
-	if (not players[1].canmove) then movespeed = 0 end
+	if (not players[1].canmove) then players[1].movespeed = 0 end
 	
-	if (movespeed > 0) then output.right = true end
-	if (movespeed < 0) then output.left = true end
+	if (players[1].movespeed > 0) then output.right = true end
+	if (players[1].movespeed < 0) then output.left = true end
 	
-	if (moveintent > 0 and not players[1].canmove) then output.right = true end
-	if (moveintent < 0 and not players[1].canmove) then output.left= true end
+	if (players[1].moveintent > 0 and not players[1].canmove) then output.right = true end
+	if (players[1].moveintent < 0 and not players[1].canmove) then output.left= true end
 	
-	if (moveintent == 0 and movespeed > 0 and movespeed <= clamp) then movespeed = 0
-	elseif (moveintent == 0 and movespeed < 0 and movespeed >= -clamp*AccelMultiplier) then movespeed = 0 end
+	if (players[1].moveintent == 0 and players[1].movespeed > 0 and players[1].movespeed <= clamp) then players[1].movespeed = 0
+	elseif (players[1].moveintent == 0 and players[1].movespeed < 0 and players[1].movespeed >= -clamp*AccelMultiplier) then players[1].movespeed = 0 end
 	
-	movespeed_buffer = movespeed_buffer + movespeed
+	players[1].movespeed_buffer = players[1].movespeed_buffer + players[1].movespeed
 	
-	movespeed_output = 0
+	players[1].movespeed_output = 0
 	
-	 while movespeed_buffer > 1 do
-		 movespeed_output = movespeed_output  + 1
-		 movespeed_buffer = movespeed_buffer - 1
+	 while players[1].movespeed_buffer > 1 do
+		 players[1].movespeed_output = players[1].movespeed_output  + 1
+		 players[1].movespeed_buffer = players[1].movespeed_buffer - 1
 	 end
 	
-	 while movespeed_buffer < -1 do
-		 movespeed_output = movespeed_output  - 1
-		 movespeed_buffer = movespeed_buffer + 1
+	 while players[1].movespeed_buffer < -1 do
+		 players[1].movespeed_output = players[1].movespeed_output  - 1
+		 players[1].movespeed_buffer = players[1].movespeed_buffer + 1
 	 end
 	 
 	 moveit()
@@ -412,7 +408,7 @@ end
 
 function effect_gunshoot(player)
     if (memory.readbyte(0x7E1400) == 5) then
-		print("SHOOT")
+		--print("SHOOT")
 		if (players[1].currentgun == 6) then
 			udp:send("r2")
 		else
@@ -457,7 +453,7 @@ end
 
 function moveit()
 	if players[1].canmove and (currentscreen == screens.ingame or currentscreen == screens.versusmode_2p or currentscreen == screens.versusmode_com) then
-		memory.writebyte(0x7E1C01, movespeed_output)
+		memory.writebyte(0x7E1C01, players[1].movespeed_output)
 	end
 end
 
