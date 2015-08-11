@@ -8,12 +8,12 @@ Here you will find Lua scripts to enhance the controls for old games. We will be
 -Super Mario Kart
 
 #####Mouse:
--Wild Guns 
--Revolution X 
+-Wild Guns  
+-Revolution X  
 
 #####Coming:
-Stunt Race FX 
-Pilotwings 
+Stunt Race FX  
+Pilotwings  
 
 Click this link to donate (if you wanna)  
 https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=USQF24NX8EAVE
