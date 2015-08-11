@@ -13,15 +13,15 @@ LockCameraToRoll = false;
 
 optionlabels = {
 "Single Tap to Barrel Roll",
-"Analog Triggers Activate L/R"
-"Free Roll"
+"Analog Triggers Activate L/R",
+"Free Roll",
 "Lock Z-Rotation to Roll"
 }
 
 optiondescriptions = {
 "If enabled, you only need to tap the L or R button once to barrel roll.",
-"If enabled, analog trigger press will activate the L/R buttons."
-"If enabled, you can roll your Arwing freely."
+"If enabled, analog trigger press will activate the L/R buttons.",
+"If enabled, you can roll your Arwing freely.",
 "If enabled, the camera's Z-rotation will stay locked to the Arwing's roll."
 }
 
