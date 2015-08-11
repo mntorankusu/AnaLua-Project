@@ -7,18 +7,22 @@ in the server itself. it will be pretty cool.
 booloptions = {
 SingleTapToBarrelRoll = true,
 AnalogTriggersLR = false,
-FreeRoll = true,
+FreeRoll = false,
 LockCameraToRoll = false;
 }
 
 optionlabels = {
 "Single Tap to Barrel Roll",
 "Analog Triggers Activate L/R"
+"Free Roll"
+"Lock Z-Rotation to Roll"
 }
 
 optiondescriptions = {
 "If enabled, you only need to tap the L or R button once to barrel roll.",
 "If enabled, analog trigger press will activate the L/R buttons."
+"If enabled, you can roll your Arwing freely."
+"If enabled, the camera's Z-rotation will stay locked to the Arwing's roll."
 }
 
 local socket = require "socket"
@@ -178,6 +182,27 @@ function mainloop()
 
 	joypad.set(1, output)
 	
+	ycameralagbuffer = 0
+	xcameralagbuffer = 0
+	
+	for i = 1,cameralag-1 do
+		xcameralag[i] = xcameralag[i+1]
+		ycameralag[i] = ycameralag[i+1]
+	end
+	
+	xcameralag[cameralag] = players[1].AnalogRightX
+	ycameralag[cameralag] = players[1].AnalogRightY
+	
+	for i = 1,cameralag do
+		ycameralagbuffer = ycameralagbuffer + ycameralag[i]
+		xcameralagbuffer = xcameralagbuffer + xcameralag[i]
+	end
+	
+	ycameralagbuffer = ycameralagbuffer / cameralag
+	
+	camerayoffset = 0-ycameralagbuffer/16
+	cameraxoffset = 0-xcameralagbuffer/16
+	
 end
 
 function setroll()
@@ -209,35 +234,16 @@ for i = 1,cameralag do
 end
 
 function camerahacks()
-	ycameralagbuffer = 0
-	xcameralagbuffer = 0
-	
-	for i = 1,cameralag-1 do
-		xcameralag[i] = xcameralag[i+1]
-		ycameralag[i] = ycameralag[i+1]
-	end
-	
-	xcameralag[cameralag] = players[1].AnalogRightX
-	ycameralag[cameralag] = players[1].AnalogRightY
-	
-	for i = 1,cameralag do
-		ycameralagbuffer = ycameralagbuffer + ycameralag[i]
-		xcameralagbuffer = xcameralagbuffer + xcameralag[i]
-	end
-	
-	ycameralagbuffer = ycameralagbuffer / cameralag
-	
-	camerayoffset = 0-ycameralagbuffer/16
-	cameraxoffset = 0-xcameralagbuffer/16
 	
 	memory.writebyte(0x7E1630, camerayoffset)
 	memory.writebyte(0x7E1636, camerayoffset)
 	memory.writebyte(0x7E18C8, camerayoffset)
 	
-	if (LockCameraToRoll) then
+	if (booloptions.LockCameraToRoll) then
 		memory.writebyte(0x7E1634, -roll)
 		memory.writebyte(0x7E064E, -roll)
 		memory.writebyte(0x7E163A, -roll) --3D camera roll
+		--I can't find the 2D rotation value, so the background doesn't rotate yet!
 	end
 	
 end
