@@ -1,13 +1,8 @@
 --quick port of Wild Guns mouse script for Revolution X. Why? That's a damn good question.
 MouseLag = 0 --make the mouse pointer lag by this number of frames. to increase the difficulty I guess?
 
-xcursoroffset = -2
-ycursoroffset = -2
-
---addresses
-address_p1_cursorx = 0x7E071B
-address_p1_cursory = 0x7E0723
---most of these screens aren't used in the script, but I've documented them for reference
+xcursoroffset = 0
+ycursoroffset = 0
 
 xmouselag = {}
 ymouselag = {}
@@ -17,12 +12,23 @@ for i = 1,MouseLag do
 	ymouselag[i] = 0
 end
 
-p1_x = 0
-p1_y = 0
+controls = {
+MouseX = 0,
+MouseY = 0, 
+addresses = {},
+values = {
+	primary = "leftclick",
+	secondary = "rightclick",
+	tertiary = "middleclick",
+	},
+}
 
-p1_character = 0
+players = {
+	controls
+}
 
-switch = true
+players[1].addresses.cursorx = 0x7E071B
+players[1].addresses.cursory = 0x7E0723
 
 p1_primary = "leftclick"
 p1_secondary = "rightclick"
@@ -32,20 +38,40 @@ screenchecka = 0
 gui.opacity(0.5)
 print("Mouse Control for Revolution X by mntorankusu - AnaLua project")
 print("Use the arrow keys to adjust the X and Y offset until the crosshair position matches your mouse. This is likely to change if you resize the emulator window.")
+messagelength = 60
+function writemessage(themessage)
+	if (themessage) then
+		messagetimer = 0
+		osdmessage = themessage
+	end
+end
+
+writemessage("Revolution X with Mouse Aiming - AnaLua project Lua script")
 
 function mousecontrol()
+
+	gui.line(players[1].MouseX-1, players[1].MouseY, players[1].MouseX+1, players[1].MouseY, AAAAAAA)
+	gui.line(players[1].MouseX, players[1].MouseY-1, players[1].MouseX, players[1].MouseY+1, AAAAAAA)
+
+	if (osdmessage) then
+		gui.text(2,219, osdmessage)
+		messagetimer = messagetimer + 1
+		if (messagetimer > messagelength) then
+			osdmessage = nil
+		end
+	end
 	
 	output = {}
 	keyinput = {}
 	
 	keyinput = input.get()
 	
-	gui.text(2,1, string.format("X: %i - Y: %i", keyinput.xmouse, keyinput.ymouse))
-	gui.text(2,216, "Revolution X with Mouse Aiming - AnaLua project Lua script")
+	--gui.text(2,1, string.format("X: %i - Y: %i", keyinput.xmouse, keyinput.ymouse))
+	
 	
 	if (MouseLag == 0) then
-		p1_x = keyinput.xmouse-xcursoroffset
-		p1_y = keyinput.ymouse-ycursoroffset
+		players[1].MouseX = keyinput.xmouse-xcursoroffset
+		players[1].MouseY = keyinput.ymouse-ycursoroffset
 	else
 		for i = 1,MouseLag-1 do
 			xmouselag[i] = xmouselag[i+1]
@@ -53,9 +79,12 @@ function mousecontrol()
 		end
 		xmouselag[MouseLag] = keyinput.xmouse+xscreenoffset-xcursoroffset
 		ymouselag[MouseLag] = keyinput.ymouse-ycursoroffset
-		p1_x = xmouselag[1]
-		p1_y = ymouselag[1]
+		players[1].MouseX = xmouselag[1]
+		players[1].MouseY = ymouselag[1]
 	end
+	
+	if players[1].MouseX > 255 then players[1].MouseX = 255 end
+	if players[1].MouseY > 224 then players[1].MouseY = 224 end
 		
 	if input.get()[p1_primary] then
 		output.Y = true
@@ -72,27 +101,27 @@ function mousecontrol()
 	
 	if input.get().left then
 			xcursoroffset = xcursoroffset+0.25
-			print(string.format("increase offset to %i", xcursoroffset))
+			writemessage(string.format("X offset: %i", xcursoroffset))
 		elseif input.get().right then
 			xcursoroffset = xcursoroffset-0.25
-			print(string.format("decrease offset to %i", xcursoroffset))
+			writemessage(string.format("X offset: %i", xcursoroffset))
 		elseif input.get().up then
 			ycursoroffset = ycursoroffset+0.25
-			print(string.format("increase y offset to %i", ycursoroffset))
+			writemessage(string.format("Y offset %i", ycursoroffset))
 		elseif input.get().down then
 			ycursoroffset = ycursoroffset-0.25
-			print(string.format("decrease y offset to %i", ycursoroffset))
+			writemessage(string.format("Y offset %i", ycursoroffset))
 		end 
 	
 	joypad.set(1, output)
 end
 
 function xcursor_set()
-	memory.writebyte(0x7E071B, p1_x)
+	memory.writebyte(0x7E071B, players[1].MouseX)
 end
 
 function ycursor_set()
-	memory.writebyte(0x7E0723, p1_y)
+	memory.writebyte(0x7E0723, players[1].MouseY)
 end
 
 

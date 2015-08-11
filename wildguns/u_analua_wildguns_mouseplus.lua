@@ -255,18 +255,18 @@ function mousecontrol()
 	end
 	
 	if input.get().left then
-			xcursoroffset = xcursoroffset+0.25
-			print(string.format("increase offset to %i", xcursoroffset))
-		elseif input.get().right then
-			xcursoroffset = xcursoroffset-0.25
-			print(string.format("decrease offset to %i", xcursoroffset))
-		elseif input.get().up then
-			ycursoroffset = ycursoroffset+0.25
-			print(string.format("increase y offset to %i", ycursoroffset))
-		elseif input.get().down then
-			ycursoroffset = ycursoroffset-0.25
-			print(string.format("decrease y offset to %i", ycursoroffset))
-		end 
+		xcursoroffset = xcursoroffset+0.25
+		writemessage(string.format("X offset: %i", xcursoroffset))
+	elseif input.get().right then
+		xcursoroffset = xcursoroffset-0.25
+		writemessage(string.format("X offset: %i", xcursoroffset))
+	elseif input.get().up then
+		ycursoroffset = ycursoroffset+0.25
+		writemessage(string.format("Y offset %i", ycursoroffset))
+	elseif input.get().down then
+		ycursoroffset = ycursoroffset-0.25
+		writemessage(string.format("Y offset %i", ycursoroffset))
+	end 
 		
 	if (LeftAnalogControl) then
 		udpsendreceive()
